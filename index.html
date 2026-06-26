@@ -73,7 +73,7 @@
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
   .table-scroll { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 820px; }
   th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); border-bottom: 1px solid var(--color-border); padding: 8px 10px; white-space: nowrap; }
   td { padding: 9px 10px; border-bottom: 1px solid var(--color-border); font-family: var(--font-mono); vertical-align: middle; }
   td.name-cell { font-family: var(--font-body); }
@@ -135,9 +135,9 @@
 
   <main>
     <section class="summary-grid">
-      <div class="summary-card"><div class="label">เงินลงทุนทั้งหมด</div><div class="value" id="summary-invested">-</div></div>
+      <div class="summary-card"><div class="label">เงินลงทุนทั้งหมด (รวมค่าธรรมเนียม)</div><div class="value" id="summary-invested">-</div></div>
       <div class="summary-card"><div class="label">มูลค่าปัจจุบัน</div><div class="value" id="summary-current">-</div></div>
-      <div class="summary-card" id="summary-pl-card"><div class="label">กำไร / ขาดทุน</div><div class="value" id="summary-pl">-</div></div>
+      <div class="summary-card" id="summary-pl-card"><div class="label">กำไร / ขาดทุน สุทธิ</div><div class="value" id="summary-pl">-</div></div>
     </section>
 
     <div class="layout">
@@ -177,7 +177,7 @@
         <div class="tab-panel active" id="panel-domestic">
           <div class="table-scroll">
             <table>
-              <thead><tr><th></th><th>ชื่อ</th><th>จำนวนหน่วย</th><th>ทุนเฉลี่ย/หน่วย</th><th>ราคาปัจจุบัน</th><th>มูลค่า</th><th>กำไร/ขาดทุน</th><th>%</th><th></th></tr></thead>
+              <thead><tr><th></th><th>ชื่อ</th><th>จำนวนหน่วย</th><th>ทุนเฉลี่ย/หน่วย</th><th>ราคาปัจจุบัน</th><th>มูลค่า</th><th>ค่าธรรมเนียม</th><th>กำไร/ขาดทุน</th><th>%</th><th></th></tr></thead>
               <tbody id="body-domestic"></tbody>
               <tfoot id="foot-domestic"></tfoot>
             </table>
@@ -187,7 +187,7 @@
         <div class="tab-panel" id="panel-global">
           <div class="table-scroll">
             <table>
-              <thead><tr><th></th><th>ชื่อ</th><th>จำนวนหน่วย</th><th>ทุนเฉลี่ย/หน่วย</th><th>ราคาปัจจุบัน</th><th>มูลค่า</th><th>กำไร/ขาดทุน</th><th>%</th><th></th></tr></thead>
+              <thead><tr><th></th><th>ชื่อ</th><th>จำนวนหน่วย</th><th>ทุนเฉลี่ย/หน่วย</th><th>ราคาปัจจุบัน</th><th>มูลค่า</th><th>ค่าธรรมเนียม</th><th>กำไร/ขาดทุน</th><th>%</th><th></th></tr></thead>
               <tbody id="body-global"></tbody>
               <tfoot id="foot-global"></tfoot>
             </table>
@@ -288,15 +288,32 @@
 
   function holdingTotals(h) {
     const native = nativeCurrencyOf(h.category);
-    let shares = 0, costNative = 0, priceWeightedSum = 0;
+    let shares = 0, pureCostNative = 0, totalFeeNative = 0;
+    
     h.transactions.forEach((t) => {
-      shares += t.shares; priceWeightedSum += t.shares * t.price;
-      costNative += t.shares * t.price + convert(t.feeAmount || 0, t.feeCurrency, native);
+      shares += t.shares; 
+      pureCostNative += t.shares * t.price; // ทุนเนื้อหุ้นเพียวๆ ไม่บวกค่าธรรมเนียม
+      totalFeeNative += convert(t.feeAmount || 0, t.feeCurrency, native); // แยกค่าธรรมเนียมสะสมไว้ต่างหาก
     });
-    const avgPriceNative = shares > 0 ? priceWeightedSum / shares : 0;
+    
+    const avgPriceNative = shares > 0 ? pureCostNative / shares : 0;
     const marketValueNative = shares * h.currentPrice;
-    const plNative = marketValueNative - costNative;
-    return { shares, costNative, avgPriceNative, marketValueNative, plNative, plPercent: costNative > 0 ? (plNative / costNative) * 100 : 0, native };
+    
+    // กำไรขาดทุนสุทธิ = มูลค่าปัจจุบัน - ทุนเนื้อหุ้น - ค่าธรรมเนียม
+    const plNative = marketValueNative - pureCostNative - totalFeeNative;
+    const totalInvestedNative = pureCostNative + totalFeeNative;
+    
+    return { 
+      shares, 
+      costNative: totalInvestedNative, 
+      pureCostNative,
+      avgPriceNative, 
+      marketValueNative, 
+      totalFeeNative,
+      plNative, 
+      plPercent: pureCostNative > 0 ? (plNative / totalInvestedNative) * 100 : 0, 
+      native 
+    };
   }
 
   function currencySymbol(ccy) { return ccy === "THB" ? "฿" : "$"; }
@@ -316,7 +333,11 @@
 
   function renderSummary() {
     let totalInvested = 0, totalCurrent = 0;
-    holdings.forEach((h) => { const t = holdingTotals(h); totalInvested += convert(t.costNative, t.native, displayCurrency); totalCurrent += convert(t.marketValueNative, t.native, displayCurrency); });
+    holdings.forEach((h) => { 
+      const t = holdingTotals(h); 
+      totalInvested += convert(t.costNative, t.native, displayCurrency); 
+      totalCurrent += convert(t.marketValueNative, t.native, displayCurrency); 
+    });
     const totalPL = totalCurrent - totalInvested;
     const totalPLPercent = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0;
     document.getElementById("summary-invested").textContent = fmtMoney(totalInvested, displayCurrency);
@@ -346,6 +367,7 @@
         '<td>' + fmtUnitPrice(totals.avgPriceNative, totals.native) + '</td>' +
         '<td><input type="number" step="any" min="0" value="' + h.currentPrice + '" data-role="current-price-input"></td>' +
         '<td>' + fmtMoney(convert(totals.marketValueNative, totals.native, displayCurrency), displayCurrency) + '</td>' +
+        '<td>' + fmtMoney(convert(totals.totalFeeNative, totals.native, displayCurrency), displayCurrency) + '</td>' +
         '<td class="' + (isGain ? "pl-gain" : "pl-loss") + '">' + (isGain ? "+" : "") + fmtMoney(convert(totals.plNative, totals.native, displayCurrency), displayCurrency) + '</td>' +
         '<td class="' + (isGain ? "pl-gain" : "pl-loss") + '">' + (isGain ? "+" : "") + totals.plPercent.toFixed(2) + '%</td>' +
         '<td><button class="icon-btn danger" data-role="delete-holding-btn">🗑</button></td>';
@@ -359,7 +381,7 @@
     if (groupHoldings.length > 0) {
       const totalRow = document.createElement("tr");
       const plGroup = groupCurrent - groupInvested, isGain = plGroup >= 0;
-      totalRow.innerHTML = '<td colspan="5">รวมแท็บนี้</td><td>' + fmtMoney(groupCurrent, displayCurrency) + '</td><td class="' + (isGain ? "pl-gain" : "pl-loss") + '">' + (isGain ? "+" : "") + fmtMoney(plGroup, displayCurrency) + '</td><td colspan="2"></td>';
+      totalRow.innerHTML = '<td colspan="5">รวมแท็บนี้</td><td>' + fmtMoney(groupCurrent, displayCurrency) + '</td><td></td><td class="' + (isGain ? "pl-gain" : "pl-loss") + '">' + (isGain ? "+" : "") + fmtMoney(plGroup, displayCurrency) + '</td><td colspan="2"></td>';
       tfoot.appendChild(totalRow);
     }
   }
@@ -372,7 +394,7 @@
     h.transactions.forEach((t) => {
       txRowsHtml += '<tr data-tx-id="' + t.id + '"><td><input type="number" step="any" min="0" value="' + t.shares + '" data-tx-field="shares"></td><td><input type="number" step="any" min="0" value="' + t.price + '" data-tx-field="price"></td><td><input type="number" step="any" min="0" value="' + (t.feeAmount || 0) + '" data-tx-field="feeAmount"></td><td><select data-tx-field="feeCurrency"><option value="USD"' + (t.feeCurrency === "USD" ? " selected" : "") + '>USD</option><option value="THB"' + (t.feeCurrency === "THB" ? " selected" : "") + '>THB</option></select></td><td><button class="icon-btn danger" data-role="delete-tx-btn">🗑</button></td></tr>';
     });
-    detailRow.innerHTML = '<td colspan="9"><div class="detail-wrap"><h4>รายการซื้อทั้งหมดของ ' + h.ticker + ' (' + native + ')</h4><table class="tx-table"><thead><tr><th>จำนวนหน่วย</th><th>ราคาซื้อ</th><th>ค่าธรรมเนียม</th><th>สกุล</th><th></th></tr></thead><tbody>' + txRowsHtml + '</tbody></table><div class="add-tx-row"><div class="mini-field"><label>จำนวนหน่วย</label><input type="number" step="any" min="0" data-new="shares"></div><div class="mini-field"><label>ราคาซื้อ (' + native + ')</label><input type="number" step="any" min="0" data-new="price"></div><div class="mini-field"><label>ค่าธรรมเนียม</label><input type="number" step="any" min="0" value="0" data-new="feeAmount"></div><div class="mini-field"><label>สกุล</label><select data-new="feeCurrency"><option value="' + native + '" selected>' + native + '</option><option value="' + (native === "USD" ? "THB" : "USD") + '">' + (native === "USD" ? "THB" : "USD") + '</option></select></div><button type="button" class="btn-secondary" data-role="add-tx-btn">+ เพิ่มรายการซื้อ</button></div></div></td>';
+    detailRow.innerHTML = '<td colspan="10"><div class="detail-wrap"><h4>รายการซื้อทั้งหมดของ ' + h.ticker + ' (' + native + ')</h4><table class="tx-table"><thead><tr><th>จำนวนหน่วย</th><th>ราคาซื้อ</th><th>ค่าธรรมเนียม</th><th>สกุล</th><th></th></tr></thead><tbody>' + txRowsHtml + '</tbody></table><div class="add-tx-row"><div class="mini-field"><label>จำนวนหน่วย</label><input type="number" step="any" min="0" data-new="shares"></div><div class="mini-field"><label>ราคาซื้อ (' + native + ')</label><input type="number" step="any" min="0" data-new="price"></div><div class="mini-field"><label>ค่าธรรมเนียม</label><input type="number" step="any" min="0" value="0" data-new="feeAmount"></div><div class="mini-field"><label>สกุล</label><select data-new="feeCurrency"><option value="' + native + '" selected>' + native + '</option><option value="' + (native === "USD" ? "THB" : "USD") + '">' + (native === "USD" ? "THB" : "USD") + '</option></select></div><button type="button" class="btn-secondary" data-role="add-tx-btn">+ เพิ่มรายการซื้อ</button></div></div></td>';
     h.transactions.forEach((t) => {
       const txRowEl = detailRow.querySelector('tr[data-tx-id="' + t.id + '"]');
       txRowEl.querySelectorAll("[data-tx-field]").forEach((inputEl) => { inputEl.addEventListener("change", (e) => { const field = e.target.dataset.txField; t[field] = field === "feeCurrency" ? e.target.value : (parseFloat(e.target.value) || 0); saveHoldings(); renderAll(); }); });
@@ -386,6 +408,15 @@
       saveHoldings(); renderAll();
     });
     return detailRow;
+  }
+
+  function switchTab(tabKey) {
+    activeTab = tabKey;
+    const btn = document.querySelector(`.tab-btn[data-tab="${tabKey}"]`);
+    if (!btn) return;
+    document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
+    document.getElementById("panel-domestic").classList.toggle("active", activeTab === "domestic");
+    document.getElementById("panel-global").classList.toggle("active", activeTab === "global");
   }
 
   function renderAll() { renderSummary(); renderGroup("domestic", "body-domestic", "foot-domestic", "empty-domestic"); renderGroup("global", "body-global", "foot-global", "empty-global"); }
@@ -408,17 +439,20 @@
     const feeCurrency = document.getElementById("input-fee-currency").value;
     const currentPrice = parseFloat(document.getElementById("input-current").value);
     if (!ticker || isNaN(shares) || isNaN(price) || isNaN(currentPrice)) return;
+    
     holdings.push({ id: genId(), category, ticker, currentPrice, transactions: [{ id: genId(), shares, price, feeAmount, feeCurrency }] });
-    saveHoldings(); renderAll(); e.target.reset(); updateUnitHints();
+    saveHoldings(); 
+    
+    const targetGroup = CATEGORY_META[category].group;
+    switchTab(targetGroup);
+    
+    renderAll(); e.target.reset(); updateUnitHints();
     document.getElementById("input-ticker").focus();
   });
 
   document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      activeTab = btn.dataset.tab;
-      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
-      document.getElementById("panel-domestic").classList.toggle("active", activeTab === "domestic");
-      document.getElementById("panel-global").classList.toggle("active", activeTab === "global");
+      switchTab(btn.dataset.tab);
     });
   });
 

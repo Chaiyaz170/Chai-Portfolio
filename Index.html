@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Portfolio Tracker</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --color-bg: #F1F3F6;
+    --color-surface: #FFFFFF;
+    --color-navy: #0B1F33;
+    --color-navy-light: #16314F;
+    --color-text: #1C2530;
+    --color-text-muted: #69727E;
+    --color-border: #E2E5EA;
+    --color-gain: #15803D;
+    --color-gain-bg: #E7F6EC;
+    --color-loss: #B91C1C;
+    --color-loss-bg: #FBEAEA;
+    --color-accent: #2563EB;
+    --color-badge-bg: #EEF2FF;
+    --color-badge-text: #4338CA;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); line-height: 1.5; }
+  .topbar { background: linear-gradient(135deg, var(--color-navy), var(--color-navy-light)); color: white; padding: 24px 32px; }
+  .topbar-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; max-width: 1140px; margin: 0 auto; }
+  .topbar h1 { font-family: var(--font-display); font-size: 22px; margin: 0 0 4px; letter-spacing: 0.2px; }
+  .topbar p { margin: 0; color: #B9C6D6; font-size: 13px; max-width: 420px; }
+  .fx-panel { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 14px; min-width: 240px; }
+  .fx-panel label { display: block; font-size: 11px; color: #B9C6D6; margin-bottom: 4px; }
+  .fx-panel select { width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.95); font-size: 13px; margin-bottom: 8px; }
+  .fx-rate-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #DCE4EE; }
+  .fx-rate-row input { width: 70px; padding: 5px 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); font-family: var(--font-mono); font-size: 12px; background: rgba(255,255,255,0.95); }
+  .fx-rate-row button { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: white; border-radius: 6px; padding: 5px 9px; font-size: 11px; cursor: pointer; }
+  .fx-rate-row button:hover { background: rgba(255,255,255,0.25); }
+  .fx-meta { margin-top: 6px; font-size: 10px; color: #9FB0C2; }
+  main { max-width: 1140px; margin: 0 auto; padding: 28px 24px 40px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .summary-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; padding: 16px 18px; transition: background 0.4s ease; }
+  .summary-card .label { font-size: 12px; color: var(--color-text-muted); margin-bottom: 6px; }
+  .summary-card .value { font-family: var(--font-mono); font-size: 22px; font-weight: 600; }
+  .summary-card .value.gain { color: var(--color-gain); }
+  .summary-card .value.loss { color: var(--color-loss); }
+  .flash-gain { animation: flashGain 0.6s ease; }
+  .flash-loss { animation: flashLoss 0.6s ease; }
+  @keyframes flashGain { 0% { background: var(--color-gain-bg); } 100% { background: transparent; } }
+  @keyframes flashLoss { 0% { background: var(--color-loss-bg); } 100% { background: transparent; } }
+  .layout { display: grid; grid-template-columns: 280px 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 780px) { .layout { grid-template-columns: 1fr; } }
+  .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; padding: 18px; }
+  .card h2 { font-family: var(--font-display); font-size: 15px; margin: 0 0 14px; }
+  label.field-label { display: block; font-size: 12px; color: var(--color-text-muted); margin: 10px 0 4px; }
+  .unit-hint { color: var(--color-accent); font-weight: 600; }
+  input, select { width: 100%; padding: 9px 10px; border: 1px solid var(--color-border); border-radius: 6px; font-family: var(--font-body); font-size: 14px; background: white; }
+  input:focus, select:focus { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+  .fee-row { display: grid; grid-template-columns: 1fr 110px; gap: 8px; }
+  button { font-family: var(--font-body); font-weight: 600; font-size: 14px; cursor: pointer; }
+  .btn-primary { width: 100%; margin-top: 16px; background: var(--color-navy); color: white; border: none; border-radius: 6px; padding: 11px; }
+  .btn-primary:hover { background: var(--color-navy-light); }
+  .btn-secondary { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 6px; padding: 7px 10px; font-size: 12px; color: var(--color-text); }
+  .btn-secondary:hover { background: var(--color-border); }
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; border-bottom: 1px solid var(--color-border); }
+  .tab-btn { background: none; border: none; padding: 10px 4px; margin-right: 14px; font-size: 13px; color: var(--color-text-muted); border-bottom: 2px solid transparent; }
+  .tab-btn.active { color: var(--color-navy); border-bottom-color: var(--color-accent); font-weight: 600; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); border-bottom: 1px solid var(--color-border); padding: 8px 10px; white-space: nowrap; }
+  td { padding: 9px 10px; border-bottom: 1px solid var(--color-border); font-family: var(--font-mono); vertical-align: middle; }
+  td.name-cell { font-family: var(--font-body); }
+  .ticker-input { font-family: var(--font-body); font-weight: 600; border: 1px solid transparent; background: transparent; padding: 4px 6px; width: 90px; }
+  .ticker-input:hover, .ticker-input:focus { border-color: var(--color-border); background: white; }
+  .category-badge { display: inline-block; background: var(--color-badge-bg); color: var(--color-badge-text); font-family: var(--font-body); font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 999px; margin-top: 3px; }
+  td input[type="number"] { font-family: var(--font-mono); padding: 6px 8px; font-size: 13px; width: 90px; }
+  .pl-gain { color: var(--color-gain); }
+  .pl-loss { color: var(--color-loss); }
+  .icon-btn { background: none; border: none; color: var(--color-text-muted); font-size: 14px; padding: 4px 6px; border-radius: 5px; }
+  .icon-btn:hover { background: var(--color-bg); color: var(--color-text); }
+  .icon-btn.danger:hover { color: var(--color-loss); }
+  .row-name-cell { display: flex; align-items: center; gap: 8px; }
+  .logo-wrap { width: 26px; height: 26px; border-radius: 999px; overflow: hidden; flex-shrink: 0; display: inline-flex; }
+  .logo-img { width: 100%; height: 100%; object-fit: cover; }
+  .logo-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: 700; font-family: var(--font-display); }
+  .empty-state { text-align: center; color: var(--color-text-muted); padding: 26px 10px; font-size: 13px; }
+  tfoot td { font-weight: 600; background: var(--color-bg); border-bottom: none; }
+  .detail-row td { background: #FAFBFC; font-family: var(--font-body); }
+  .detail-wrap { padding: 6px 4px 14px; }
+  .detail-wrap h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); margin: 0 0 8px; }
+  .tx-table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 0; }
+  .tx-table th { font-size: 10px; padding: 4px 6px; }
+  .tx-table td { padding: 5px 6px; border-bottom: 1px solid var(--color-border); font-family: var(--font-mono); }
+  .tx-table input, .tx-table select { padding: 5px 6px; font-size: 12px; }
+  .tx-table input[type="number"] { width: 80px; }
+  .add-tx-row { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; align-items: end; }
+  .add-tx-row .mini-field { display: flex; flex-direction: column; gap: 3px; }
+  .add-tx-row label { font-size: 10px; color: var(--color-text-muted); }
+  .add-tx-row input, .add-tx-row select { padding: 6px 8px; font-size: 12px; width: 90px; }
+  footer.attribution { text-align: center; font-size: 11px; color: var(--color-text-muted); padding: 18px 0 30px; }
+  footer.attribution a { color: var(--color-accent); text-decoration: none; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-row">
+      <div>
+        <h1>Portfolio Tracker</h1>
+        <p>เครื่องมือติดตามพอร์ตลงทุน — เก็บข้อมูลไว้ในเบราว์เซอร์ของคุณเอง ไม่มีการส่งข้อมูลขึ้นเซิร์ฟเวอร์ไหน</p>
+      </div>
+      <div class="fx-panel">
+        <label for="display-currency-select">แสดงค่าเงินเป็น</label>
+        <select id="display-currency-select">
+          <option value="THB">บาท (THB)</option>
+          <option value="USD">ดอลลาร์ (USD)</option>
+        </select>
+        <div class="fx-rate-row">
+          <span>1 USD =</span>
+          <input id="fx-rate-input" type="number" step="any" min="0">
+          <span>THB</span>
+          <button id="fx-refresh-btn" type="button">รีเฟรช</button>
+        </div>
+        <div class="fx-meta" id="fx-meta">กำลังโหลดอัตราแลกเปลี่ยน...</div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="summary-grid">
+      <div class="summary-card"><div class="label">เงินลงทุนทั้งหมด</div><div class="value" id="summary-invested">-</div></div>
+      <div class="summary-card"><div class="label">มูลค่าปัจจุบัน</div><div class="value" id="summary-current">-</div></div>
+      <div class="summary-card" id="summary-pl-card"><div class="label">กำไร / ขาดทุน</div><div class="value" id="summary-pl">-</div></div>
+    </section>
+
+    <div class="layout">
+      <aside class="card">
+        <h2>เพิ่มรายการ</h2>
+        <form id="add-form">
+          <label class="field-label" for="input-category">หมวด</label>
+          <select id="input-category">
+            <option value="thai_stock">หุ้นไทย</option>
+            <option value="mutual_fund">กองทุนรวม</option>
+            <option value="foreign_stock" selected>หุ้นต่างประเทศ</option>
+            <option value="etf">ETF</option>
+            <option value="crypto">Crypto</option>
+          </select>
+          <label class="field-label" for="input-ticker">ชื่อ / Ticker</label>
+          <input id="input-ticker" required>
+          <label class="field-label" for="input-shares">จำนวนหน่วย</label>
+          <input id="input-shares" type="number" step="any" min="0" required>
+          <label class="field-label" for="input-price">ราคาซื้อต่อหน่วย (<span class="unit-hint" id="price-unit-hint">USD</span>)</label>
+          <input id="input-price" type="number" step="any" min="0" required>
+          <label class="field-label">ค่าธรรมเนียมการซื้อ</label>
+          <div class="fee-row">
+            <input id="input-fee" type="number" step="any" min="0" value="0">
+            <select id="input-fee-currency"><option value="USD">USD</option><option value="THB">THB</option></select>
+          </div>
+          <label class="field-label" for="input-current">ราคาปัจจุบัน (<span class="unit-hint" id="current-unit-hint">USD</span>)</label>
+          <input id="input-current" type="number" step="any" min="0" required>
+          <button type="submit" class="btn-primary">+ เพิ่มเข้าพอร์ต</button>
+        </form>
+      </aside>
+
+      <section class="card">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="domestic" type="button">หุ้นไทย &amp; กองทุนรวม</button>
+          <button class="tab-btn" data-tab="global" type="button">ต่างประเทศ (หุ้น / ETF / Crypto)</button>
+        </div>
+        <div class="tab-panel active" id="panel-domestic">
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th></th><th>ชื่อ</th><th>จำนวนหน่วย</th><th>ทุนเฉลี่ย/หน่วย</th><th>ราคาปัจจุบัน</th><th>มูลค่า</th><th>กำไร/ขาดทุน</th><th>%</th><th></th></tr></thead>
+              <tbody id="body-domestic"></tbody>
+              <tfoot id="foot-domestic"></tfoot>
+            </table>
+          </div>
+          <div class="empty-state" id="empty-domestic" style="display:none;">ยังไม่มีรายการในหมวดนี้</div>
+        </div>
+        <div class="tab-panel" id="panel-global">
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th></th><th>ชื่อ</th><th>จำนวนหน่วย</th><th>ทุนเฉลี่ย/หน่วย</th><th>ราคาปัจจุบัน</th><th>มูลค่า</th><th>กำไร/ขาดทุน</th><th>%</th><th></th></tr></thead>
+              <tbody id="body-global"></tbody>
+              <tfoot id="foot-global"></tfoot>
+            </table>
+          </div>
+          <div class="empty-state" id="empty-global" style="display:none;">ยังไม่มีรายการในหมวดนี้</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="attribution">
+    โลโก้บางส่วนแสดงผลผ่าน <a href="https://www.allinvestview.com/tools/ticker-logos/">AllInvestView Ticker Logos</a> (ฟรี ไม่ต้องใช้ API key)
+  </footer>
+
+<script>
+  const STORAGE_KEY = "portfolio_holdings_v2";
+  const STORAGE_KEY_OLD = "portfolio-tracker-holdings";
+  const FX_STORAGE_KEY = "portfolio_fx_rate_v1";
+  const DISPLAY_CCY_KEY = "portfolio_display_ccy_v1";
+  const FALLBACK_USD_THB = 32.5;
+
+  const CATEGORY_META = {
+    thai_stock:    { label: "หุ้นไทย",        nativeCurrency: "THB", group: "domestic" },
+    mutual_fund:   { label: "กองทุนรวม",      nativeCurrency: "THB", group: "domestic" },
+    foreign_stock: { label: "หุ้นต่างประเทศ", nativeCurrency: "USD", group: "global" },
+    etf:           { label: "ETF",            nativeCurrency: "USD", group: "global" },
+    crypto:        { label: "Crypto",         nativeCurrency: "USD", group: "global" },
+  };
+
+  const TICKER_LOGO_DOMAINS = {
+    NVDA: "nvidia.com", AAPL: "apple.com", MSFT: "microsoft.com",
+    GOOGL: "google.com", GOOG: "google.com", AMZN: "amazon.com",
+    META: "meta.com", TSLA: "tesla.com", AMD: "amd.com", INTC: "intel.com",
+    NFLX: "netflix.com", MU: "micron.com", HOOD: "robinhood.com",
+    PL: "planet.com", SNDK: "sandisk.com", LITE: "lumentum.com",
+    LRCX: "lamresearch.com", AMAT: "appliedmaterials.com", ASML: "asml.com",
+    KLAC: "kla.com", MRVL: "marvell.com",
+  };
+
+  let holdings = loadHoldings();
+  let fxRate = loadFxRate();
+  let displayCurrency = loadDisplayCurrency();
+  let activeTab = "domestic";
+  let expandedIds = new Set();
+  let idCounter = Date.now();
+
+  function genId() { idCounter += 1; return idCounter; }
+
+  function loadHoldings() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) { try { return JSON.parse(raw); } catch (e) { return []; } }
+    const oldRaw = localStorage.getItem(STORAGE_KEY_OLD);
+    if (oldRaw) {
+      try {
+        const oldData = JSON.parse(oldRaw);
+        return oldData.map((h) => ({ id: genId(), category: "foreign_stock", ticker: h.ticker, currentPrice: h.currentPrice, transactions: [{ id: genId(), shares: h.shares, price: h.avgPrice, feeAmount: 0, feeCurrency: "USD" }] }));
+      } catch (e) {}
+    }
+    return [];
+  }
+
+  function saveHoldings() { localStorage.setItem(STORAGE_KEY, JSON.stringify(holdings)); }
+  function loadFxRate() { const raw = localStorage.getItem(FX_STORAGE_KEY); if (raw) { try { return JSON.parse(raw); } catch (e) {} } return { usdToThb: FALLBACK_USD_THB, updatedAt: null, source: "fallback" }; }
+  function saveFxRate() { localStorage.setItem(FX_STORAGE_KEY, JSON.stringify(fxRate)); }
+  function loadDisplayCurrency() { return localStorage.getItem(DISPLAY_CCY_KEY) || "THB"; }
+  function saveDisplayCurrency() { localStorage.setItem(DISPLAY_CCY_KEY, displayCurrency); }
+
+  function convert(amount, from, to) {
+    if (from === to) return amount;
+    if (from === "USD" && to === "THB") return amount * fxRate.usdToThb;
+    if (from === "THB" && to === "USD") return amount / fxRate.usdToThb;
+    return amount;
+  }
+
+  async function fetchLiveFxRate() {
+    const metaEl = document.getElementById("fx-meta");
+    metaEl.textContent = "กำลังดึงอัตราแลกเปลี่ยนล่าสุด...";
+    try {
+      const res = await fetch("https://api.frankfurter.app/latest?from=USD&to=THB");
+      if (!res.ok) throw new Error("network not ok");
+      const data = await res.json();
+      const rate = data.rates && data.rates.THB;
+      if (!rate) throw new Error("no rate in response");
+      fxRate = { usdToThb: rate, updatedAt: new Date().toISOString(), source: "live" };
+      saveFxRate(); updateFxInputUI(); renderAll();
+    } catch (err) { updateFxInputUI(); }
+  }
+
+  function updateFxInputUI() {
+    document.getElementById("fx-rate-input").value = fxRate.usdToThb;
+    const metaEl = document.getElementById("fx-meta");
+    if (fxRate.source === "live" && fxRate.updatedAt) metaEl.textContent = "อัตราล่าสุดจาก Frankfurter API ณ " + new Date(fxRate.updatedAt).toLocaleString("th-TH");
+    else if (fxRate.source === "manual") metaEl.textContent = "ใช้อัตราที่คุณกำหนดเอง";
+    else metaEl.textContent = "ใช้ค่าประมาณสำรอง — กดรีเฟรชเพื่อลองใหม่";
+  }
+
+  function nativeCurrencyOf(category) { return CATEGORY_META[category].nativeCurrency; }
+
+  function holdingTotals(h) {
+    const native = nativeCurrencyOf(h.category);
+    let shares = 0, costNative = 0, priceWeightedSum = 0;
+    h.transactions.forEach((t) => {
+      shares += t.shares; priceWeightedSum += t.shares * t.price;
+      costNative += t.shares * t.price + convert(t.feeAmount || 0, t.feeCurrency, native);
+    });
+    const avgPriceNative = shares > 0 ? priceWeightedSum / shares : 0;
+    const marketValueNative = shares * h.currentPrice;
+    const plNative = marketValueNative - costNative;
+    return { shares, costNative, avgPriceNative, marketValueNative, plNative, plPercent: costNative > 0 ? (plNative / costNative) * 100 : 0, native };
+  }
+
+  function currencySymbol(ccy) { return ccy === "THB" ? "฿" : "$"; }
+  function fmtMoney(amount, ccy) { return currencySymbol(ccy) + amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function fmtUnitPrice(amount, ccy) { return currencySymbol(ccy) + amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 }); }
+  function fmtShares(num) { return parseFloat(num.toFixed(6)).toString(); }
+  function hashColor(str) { let hash = 0; for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) % 360; return "hsl(" + hash + ", 55%, 45%)"; }
+
+  function logoHtml(ticker) {
+    const upper = (ticker || "?").toUpperCase();
+    const domain = TICKER_LOGO_DOMAINS[upper];
+    const initials = upper.slice(0, 2);
+    const color = hashColor(upper);
+    if (domain) return '<span class="logo-wrap"><img class="logo-img" src="https://cdn.tickerlogos.com/' + domain + '" alt="' + upper + '" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'flex\';"><span class="logo-fallback" style="display:none; background:' + color + ';">' + initials + '</span></span>';
+    return '<span class="logo-wrap"><span class="logo-fallback" style="background:' + color + ';">' + initials + '</span></span>';
+  }
+
+  function renderSummary() {
+    let totalInvested = 0, totalCurrent = 0;
+    holdings.forEach((h) => { const t = holdingTotals(h); totalInvested += convert(t.costNative, t.native, displayCurrency); totalCurrent += convert(t.marketValueNative, t.native, displayCurrency); });
+    const totalPL = totalCurrent - totalInvested;
+    const totalPLPercent = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0;
+    document.getElementById("summary-invested").textContent = fmtMoney(totalInvested, displayCurrency);
+    document.getElementById("summary-current").textContent = fmtMoney(totalCurrent, displayCurrency);
+    const plEl = document.getElementById("summary-pl");
+    const sign = totalPL >= 0 ? "+" : "";
+    plEl.textContent = sign + fmtMoney(totalPL, displayCurrency) + " (" + sign + totalPLPercent.toFixed(2) + "%)";
+    plEl.classList.remove("gain", "loss"); plEl.classList.add(totalPL >= 0 ? "gain" : "loss");
+  }
+
+  function renderGroup(groupKey, tbodyId, footId, emptyId) {
+    const tbody = document.getElementById(tbodyId), tfoot = document.getElementById(footId), emptyEl = document.getElementById(emptyId);
+    tbody.innerHTML = ""; tfoot.innerHTML = "";
+    const groupHoldings = holdings.filter((h) => CATEGORY_META[h.category].group === groupKey);
+    emptyEl.style.display = groupHoldings.length === 0 ? "block" : "none";
+    let groupInvested = 0, groupCurrent = 0;
+    groupHoldings.forEach((h) => {
+      const totals = holdingTotals(h);
+      groupInvested += convert(totals.costNative, totals.native, displayCurrency);
+      groupCurrent += convert(totals.marketValueNative, totals.native, displayCurrency);
+      const isGain = totals.plNative >= 0, isExpanded = expandedIds.has(h.id);
+      const row = document.createElement("tr");
+      row.dataset.id = h.id;
+      row.innerHTML = '<td><button class="icon-btn" data-role="expand-btn">' + (isExpanded ? "▾" : "▸") + '</button></td>' +
+        '<td class="name-cell"><div class="row-name-cell">' + logoHtml(h.ticker) + '<div><input class="ticker-input" data-role="ticker-input" value="' + h.ticker + '"><div class="category-badge">' + CATEGORY_META[h.category].label + '</div></div></div></td>' +
+        '<td>' + fmtShares(totals.shares) + '</td>' +
+        '<td>' + fmtUnitPrice(totals.avgPriceNative, totals.native) + '</td>' +
+        '<td><input type="number" step="any" min="0" value="' + h.currentPrice + '" data-role="current-price-input"></td>' +
+        '<td>' + fmtMoney(convert(totals.marketValueNative, totals.native, displayCurrency), displayCurrency) + '</td>' +
+        '<td class="' + (isGain ? "pl-gain" : "pl-loss") + '">' + (isGain ? "+" : "") + fmtMoney(convert(totals.plNative, totals.native, displayCurrency), displayCurrency) + '</td>' +
+        '<td class="' + (isGain ? "pl-gain" : "pl-loss") + '">' + (isGain ? "+" : "") + totals.plPercent.toFixed(2) + '%</td>' +
+        '<td><button class="icon-btn danger" data-role="delete-holding-btn">🗑</button></td>';
+      tbody.appendChild(row);
+      row.querySelector('[data-role="current-price-input"]').addEventListener("change", (e) => { h.currentPrice = parseFloat(e.target.value) || 0; saveHoldings(); renderAll(); });
+      row.querySelector('[data-role="ticker-input"]').addEventListener("change", (e) => { h.ticker = e.target.value.trim().toUpperCase() || h.ticker; saveHoldings(); renderAll(); });
+      row.querySelector('[data-role="delete-holding-btn"]').addEventListener("click", () => { if (!confirm("ลบ " + h.ticker + " ทั้งหมด?")) return; holdings = holdings.filter((item) => item.id !== h.id); expandedIds.delete(h.id); saveHoldings(); renderAll(); });
+      row.querySelector('[data-role="expand-btn"]').addEventListener("click", () => { if (expandedIds.has(h.id)) expandedIds.delete(h.id); else expandedIds.add(h.id); renderAll(); });
+      if (isExpanded) tbody.appendChild(buildDetailRow(h));
+    });
+    if (groupHoldings.length > 0) {
+      const totalRow = document.createElement("tr");
+      const plGroup = groupCurrent - groupInvested, isGain = plGroup >= 0;
+      totalRow.innerHTML = '<td colspan="5">รวมแท็บนี้</td><td>' + fmtMoney(groupCurrent, displayCurrency) + '</td><td class="' + (isGain ? "pl-gain" : "pl-loss") + '">' + (isGain ? "+" : "") + fmtMoney(plGroup, displayCurrency) + '</td><td colspan="2"></td>';
+      tfoot.appendChild(totalRow);
+    }
+  }
+
+  function buildDetailRow(h) {
+    const native = nativeCurrencyOf(h.category);
+    const detailRow = document.createElement("tr");
+    detailRow.classList.add("detail-row");
+    let txRowsHtml = "";
+    h.transactions.forEach((t) => {
+      txRowsHtml += '<tr data-tx-id="' + t.id + '"><td><input type="number" step="any" min="0" value="' + t.shares + '" data-tx-field="shares"></td><td><input type="number" step="any" min="0" value="' + t.price + '" data-tx-field="price"></td><td><input type="number" step="any" min="0" value="' + (t.feeAmount || 0) + '" data-tx-field="feeAmount"></td><td><select data-tx-field="feeCurrency"><option value="USD"' + (t.feeCurrency === "USD" ? " selected" : "") + '>USD</option><option value="THB"' + (t.feeCurrency === "THB" ? " selected" : "") + '>THB</option></select></td><td><button class="icon-btn danger" data-role="delete-tx-btn">🗑</button></td></tr>';
+    });
+    detailRow.innerHTML = '<td colspan="9"><div class="detail-wrap"><h4>รายการซื้อทั้งหมดของ ' + h.ticker + ' (' + native + ')</h4><table class="tx-table"><thead><tr><th>จำนวนหน่วย</th><th>ราคาซื้อ</th><th>ค่าธรรมเนียม</th><th>สกุล</th><th></th></tr></thead><tbody>' + txRowsHtml + '</tbody></table><div class="add-tx-row"><div class="mini-field"><label>จำนวนหน่วย</label><input type="number" step="any" min="0" data-new="shares"></div><div class="mini-field"><label>ราคาซื้อ (' + native + ')</label><input type="number" step="any" min="0" data-new="price"></div><div class="mini-field"><label>ค่าธรรมเนียม</label><input type="number" step="any" min="0" value="0" data-new="feeAmount"></div><div class="mini-field"><label>สกุล</label><select data-new="feeCurrency"><option value="' + native + '" selected>' + native + '</option><option value="' + (native === "USD" ? "THB" : "USD") + '">' + (native === "USD" ? "THB" : "USD") + '</option></select></div><button type="button" class="btn-secondary" data-role="add-tx-btn">+ เพิ่มรายการซื้อ</button></div></div></td>';
+    h.transactions.forEach((t) => {
+      const txRowEl = detailRow.querySelector('tr[data-tx-id="' + t.id + '"]');
+      txRowEl.querySelectorAll("[data-tx-field]").forEach((inputEl) => { inputEl.addEventListener("change", (e) => { const field = e.target.dataset.txField; t[field] = field === "feeCurrency" ? e.target.value : (parseFloat(e.target.value) || 0); saveHoldings(); renderAll(); }); });
+      txRowEl.querySelector('[data-role="delete-tx-btn"]').addEventListener("click", () => { if (h.transactions.length === 1) { alert("ต้องมีรายการซื้ออย่างน้อย 1 รายการ"); return; } h.transactions = h.transactions.filter((item) => item.id !== t.id); saveHoldings(); renderAll(); });
+    });
+    detailRow.querySelector('[data-role="add-tx-btn"]').addEventListener("click", () => {
+      const shares = parseFloat(detailRow.querySelector('[data-new="shares"]').value);
+      const price = parseFloat(detailRow.querySelector('[data-new="price"]').value);
+      if (!shares || !price) { alert("กรอกจำนวนหน่วยและราคาซื้อให้ครบ"); return; }
+      h.transactions.push({ id: genId(), shares, price, feeAmount: parseFloat(detailRow.querySelector('[data-new="feeAmount"]').value) || 0, feeCurrency: detailRow.querySelector('[data-new="feeCurrency"]').value });
+      saveHoldings(); renderAll();
+    });
+    return detailRow;
+  }
+
+  function renderAll() { renderSummary(); renderGroup("domestic", "body-domestic", "foot-domestic", "empty-domestic"); renderGroup("global", "body-global", "foot-global", "empty-global"); }
+
+  function updateUnitHints() {
+    const native = nativeCurrencyOf(document.getElementById("input-category").value);
+    document.getElementById("price-unit-hint").textContent = native;
+    document.getElementById("current-unit-hint").textContent = native;
+    document.getElementById("input-fee-currency").value = native;
+  }
+
+  document.getElementById("input-category").addEventListener("change", updateUnitHints);
+  document.getElementById("add-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const category = document.getElementById("input-category").value;
+    const ticker = document.getElementById("input-ticker").value.trim().toUpperCase();
+    const shares = parseFloat(document.getElementById("input-shares").value);
+    const price = parseFloat(document.getElementById("input-price").value);
+    const feeAmount = parseFloat(document.getElementById("input-fee").value) || 0;
+    const feeCurrency = document.getElementById("input-fee-currency").value;
+    const currentPrice = parseFloat(document.getElementById("input-current").value);
+    if (!ticker || isNaN(shares) || isNaN(price) || isNaN(currentPrice)) return;
+    holdings.push({ id: genId(), category, ticker, currentPrice, transactions: [{ id: genId(), shares, price, feeAmount, feeCurrency }] });
+    saveHoldings(); renderAll(); e.target.reset(); updateUnitHints();
+    document.getElementById("input-ticker").focus();
+  });
+
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      activeTab = btn.dataset.tab;
+      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
+      document.getElementById("panel-domestic").classList.toggle("active", activeTab === "domestic");
+      document.getElementById("panel-global").classList.toggle("active", activeTab === "global");
+    });
+  });
+
+  document.getElementById("display-currency-select").addEventListener("change", (e) => { displayCurrency = e.target.value; saveDisplayCurrency(); renderAll(); });
+  document.getElementById("fx-rate-input").addEventListener("change", (e) => { const val = parseFloat(e.target.value); if (!val || val <= 0) return; fxRate = { usdToThb: val, updatedAt: new Date().toISOString(), source: "manual" }; saveFxRate(); updateFxInputUI(); renderAll(); });
+  document.getElementById("fx-refresh-btn").addEventListener("click", fetchLiveFxRate);
+
+  document.getElementById("display-currency-select").value = displayCurrency;
+  updateUnitHints(); updateFxInputUI(); renderAll(); fetchLiveFxRate();
+</script>
+
+</body>
+</html>
